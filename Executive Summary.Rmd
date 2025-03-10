@@ -1,0 +1,26 @@
+---
+title: "Executive Summary"
+author: "Titus Karuri"
+date: "2025-03-10"
+output: html_document
+---
+
+
+
+## R Markdown
+
+```{r}
+#The introduction to this project.
+# We has been hired by Frito Lay to identify factors related to employee attrition.  They aim to predict employee attrition in order to identify those employees who may be more likely to leave the company as well as identifying factors that are related to attrition so that they can best reduce the probability of attrition where desired. 
+
+#The factors that were identified to lead to attrition were "JobLevel", "YearsAtCompany","Age","MonthlyIncome".
+
+#The performance of the Naive Bayes models did well in consistently getting over 60% sensitivity and specificity. The KNN model would sometimes get over those 
+#percentages but sometimes not. The Naive Bayes model for the competition set looks like it gave the best results for accuracy and sensitivity and specificity.
+
+#Youtube link for presentation https://youtu.be/z5VTsSH_HKY
+
+#One question could be, are these models really capable of saving a company money.
+#I wonder if a company would actually use a model this similar to monitor attrition trends.
+
+```
