@@ -1,0 +1,172 @@
+---
+title: "Frito Lay Case study"
+author: "Titus Karuri"
+output: html_document
+date: "2025-03-01"
+---
+
+```{r}
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(tidyverse)
+library(e1071)
+library(caret)
+library(class)
+```
+
+## R Markdown
+
+```{r}
+#EDA Section 
+#Plots that were used do describe the factors taken into the final model
+case_study = read.csv("CaseStudy1-data.csv")
+
+#Attrition total chart
+ggplot(case_study, aes(x = as.factor(Attrition), fill = as.factor(Attrition))) + geom_bar() + 
+ geom_text(stat = 'count', aes(label = after_stat(count)),vjust = -0.5)+
+  geom_text(data = percentages, aes(x = as.factor(Attrition), y = max(case_study$YearsAtCompany) * 0.95, label = paste(round(Percent, 1), "%")))+
+    labs(title = "Attrition Total", x = "Attrition", y = "Count") + theme_minimal() + theme(legend.position="none")
+
+#show percentages on bar charts
+count_data <- case_study %>%  group_by(JobLevel, Attrition) %>%  tally() %>%  mutate(Percent = n / sum(n) * 100)
+
+#Job level chart
+ggplot(count_data, aes(x = JobLevel, y = as.factor(Attrition), fill = as.factor(Attrition))) + geom_boxplot() +
+  geom_text(aes(label = paste(round(Percent, 1), "%")),vjust = -0.5, hjust = 0.65) + labs(title = "Attrition by Job Level" ,x = "JobLevel" ,y = "Attrition")+  
+      theme_minimal()+theme(legend.position="none")
+
+#Job level chart
+ggplot(count_data, aes(x=as.factor(JobLevel),y = n, fill = as.factor(Attrition))) + geom_bar(stat = "identity", position = "dodge", color = "black") +
+ geom_text(aes(label = paste(round(Percent, 1), "%")),vjust = -0.5, hjust = -0.1) + 
+  labs(title = "Attrition vs Job Level" ,x = "Job Level" ,y = "Total", fill = ("Attrition"))  + theme_minimal()
+
+#job satisfaction chart taken out of final model
+count_data1 <- case_study %>%  group_by(JobSatisfaction, Attrition) %>%  tally() %>%  mutate(Percent = n / sum(n) * 100)
+ggplot(count_data1, aes(x = JobSatisfaction, y = as.factor(Attrition) ,fill = as.factor(Attrition))) + geom_boxplot() +
+  geom_text(aes(label = paste(round(Percent, 1), "%")),vjust = -0.5, hjust = 0.5) +
+    labs(title = "Attrition vs Job Satisfaction" ,x = "JobSatisfaction" ,y = "Attrition")  + theme_minimal() + theme(legend.position="none")
+
+#Years at a company chart
+ggplot(case_study, aes(x = as.factor(YearsAtCompany), fill = as.factor(Attrition))) + geom_bar(position = "dodge", color = "black") + 
+  labs(title = "Attrition by Years at a Company" ,x = "Years at Company" ,y = "Total", fill = ("Attrition"))  + theme_minimal()
+
+#show percentages on boxplots
+percentages <- case_study %>% group_by(Attrition) %>%  summarise(Count = n()) %>%  mutate(Percent = Count / sum(Count) * 100)
+
+#Years at a company chart
+ggplot(case_study, aes(x = as.factor(Attrition),y = YearsAtCompany, fill = as.factor(Attrition))) + geom_boxplot() +
+  geom_text(data = percentages, aes(x = as.factor(Attrition), y = max(case_study$YearsAtCompany) * 0.95, label = paste(round(Percent, 1), "%")), 
+    size = 5, vjust = -0.5,hjust = -0.5, color = "black") + labs(title = "Attrition by Years At Company" ,x = "Attrition" ,y = "Years At Company")+ theme_minimal()+
+      theme(legend.position="none")
+
+#Age chart
+ggplot(case_study, aes(x = as.factor(Attrition),y = Age, fill = as.factor(Attrition))) + geom_boxplot() +
+ geom_text(data = percentages, aes(x = as.factor(Attrition), y = max(case_study$Age) * 0.95, label = paste(round(Percent, 1), "%")), 
+    size = 5, vjust = -0.5,hjust = -0.5, color = "black") + labs(title = "Attrition by Age" ,x = "Attrition" ,y = "Age")+ theme_minimal() + theme(legend.position="none")
+
+#Monthly Income chart
+ggplot(case_study, aes(x = as.factor(Attrition), y = MonthlyIncome, fill = as.factor(Attrition))) + geom_boxplot() +
+ geom_text(data = percentages, aes(x = as.factor(Attrition), y = max(case_study$MonthlyIncome) * 0.95, label = paste(round(Percent, 1), "%")), 
+  size = 5, vjust = -0.5,hjust = -0.5, color = "black")+ labs(title = "Attrition vs Monthly Income" ,x = "Attrition" ,y = "Monthly Income")  + theme_minimal() +
+    theme(legend.position="none")
+```
+
+```{r}
+#Naive Baye model
+case_study = read.csv("CaseStudy1-data.csv")
+
+#number of time the loop will run for
+iterations = 1000
+
+for(i in 1:iterations) 
+{
+  # Convert categorical variables to factors
+  case_study$Attrition <- as.factor(case_study$Attrition)
+  
+  #Split data into training and testing set(70% train , 30% test)
+  trainIndices = sample(sample(seq(1:length(case_study$Attrition)), round(.7*length(case_study$Attrition))))
+  trainAttrition = case_study[trainIndices,]
+  testAttrition = case_study[-trainIndices,]
+  
+  # Train a Naïve Bayes model
+  model = naiveBayes(x = trainAttrition[,c("JobLevel", "YearsAtCompany","Age","MonthlyIncome")], y = trainAttrition$Attrition)
+  
+  # Predict on Test Set
+  NB_prob <- predict(model,testAttrition[,c("JobLevel", "YearsAtCompany","Age","MonthlyIncome")], type = "raw")
+  threshold = .25
+  NB_Adjusted_Prediction <- ifelse(NB_prob[,2]> threshold, "Yes", "No")
+  NB_Adjusted_Prediction <- as.factor(NB_Adjusted_Prediction)
+  
+  CM2 <- confusionMatrix(NB_Adjusted_Prediction,testAttrition$Attrition)
+  
+}
+#output confusion matrix
+CM2
+
+#KNN model
+train_features <- trainAttrition[, c("JobLevel", "YearsAtCompany","Age","MonthlyIncome")]
+labels <- trainAttrition$Attrition
+
+#Perform cross-validation for KNN
+knn_pred <- knn.cv(train = train_features, cl = labels, k = 11, prob = TRUE )
+
+# Extracts probabilities of the predicted class
+knn_prob <- attr(knn_pred, "prob")
+knn_prob <- ifelse(knn_pred == "Yes", knn_prob, 1 - knn_prob)
+
+# Set threshold
+knn_threshold <- .18
+knn_adjusted_pred <- ifelse(knn_prob > knn_threshold, "Yes", "No")
+
+#Convert predictions to factor
+knn_adjusted_pred <- as.factor(knn_adjusted_pred)
+knn_CM2 <- confusionMatrix(knn_adjusted_pred, labels)
+knn_CM2
+
+
+```
+
+```{r}
+#Competition set with NB model
+comp_set = read.csv("CaseStudy1CompSet No Attrition.csv")
+
+#Create Attrition column which will act as target variable which the model is trying to predict during training
+#Employees with less than 5 years at the company or low income might have higher attrition
+comp_set$Attrition <- ifelse(comp_set$YearsAtCompany < 5 | comp_set$MonthlyIncome < 3000, "Yes", "No")
+comp_set$Attrition <- as.factor(comp_set$Attrition)
+
+#Define target factors leading to attrition
+features <- comp_set[, c("JobLevel", "YearsAtCompany", "Age", "MonthlyIncome")]
+
+iterations = 1000
+
+for(i in 1:iterations) 
+{
+  #Split data into training and testing set(70% train , 30% test)
+  trainIndices_comp = sample(sample(seq(1:length(comp_set)), round(.7*length(comp_set))))
+  trainAttrition_comp = comp_set[trainIndices_comp,]
+  testAttrition_comp = comp_set[-trainIndices_comp,]
+  
+  # Train a Naïve Bayes model
+  model = naiveBayes(x = trainAttrition_comp[,c("JobLevel", "YearsAtCompany","Age","MonthlyIncome")], y = trainAttrition_comp$Attrition)
+  
+  # Predict on Test Set
+  NB_prob <- predict(model,testAttrition_comp[,c("JobLevel", "YearsAtCompany","Age","MonthlyIncome")], type = "raw")
+  threshold = .25
+  NB_Adjusted_Prediction <- ifelse(NB_prob[,2]> threshold, "Yes", "No")
+  NB_Adjusted_Prediction <- as.factor(NB_Adjusted_Prediction)
+  
+  CM2 <- confusionMatrix(NB_Adjusted_Prediction,testAttrition_comp$Attrition)
+
+}
+#output confusion matrix
+CM2
+# use the model trained on the last iteration to predict for all employees
+all_predictions <- predict(model, features)
+# Save predictions to a CSV file
+output <- data.frame(ID = comp_set$ID, Attrition = all_predictions)
+write.csv(output, "Case1PredictionsKaruri Attrition.csv", row.names = FALSE)
+
+
+```
